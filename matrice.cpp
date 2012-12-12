@@ -5,21 +5,12 @@
 
 Matrice::Matrice(int x,int y):taillex(x),tailley(y)
 {
-    mat = new int*[taillex];
-    for(int i=0;i<taillex;i++)
-    {
-        mat[i]=new int[tailley];
-    }
-}
-
-int * Matrice::getLine(int x)
-{
-    return mat[x];
+    mat = new int[taillex*tailley];
 }
 
 int Matrice::get(int x, int y) const
 {
-    return mat[x][y];
+    return mat[x*tailley + y];
 }
 
 Matrice::Matrice(string fic)
@@ -39,31 +30,23 @@ Matrice::Matrice(string fic)
     f>>tmp;
     f>>buf;
     f>>nodata;
-    mat = new int*[taillex];
-    for(int i=0;i<taillex;i++)
-    {
-        mat[i] = new int[tailley];
-    }
+    mat = new int[taillex*tailley];
     for(int i=0;i<taillex;i++)
     {
         for(int j=0;j<tailley;j++)
         {
-            f>>mat[i][j];
+            f>>mat[i*tailley + j];
         }
     }
 }
 
-int ** Matrice::getMat()
+int * Matrice::getMat()
 {
     return mat;
 }
 
 Matrice::~Matrice()
 {
-    for(int i =0;i<taillex;i++)
-    {
-        delete [] mat[i];
-    }
     delete [] mat;
 }
 
