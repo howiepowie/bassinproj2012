@@ -13,21 +13,20 @@ int Matrice::get(int x, int y) const
     return mat[x*tailley + y];
 }
 
-Matrice::Matrice(string fic)
+Matrice::Matrice(string fic):fic(fic)
 {
     ifstream f(fic.c_str(),ifstream::in);
     string buf;
-    int tmp;
     f>>buf;
     f>>tailley;
     f>>buf;
     f>>taillex;
     f>>buf;
-    f>>tmp;
+    f>>xllcorner;
     f>>buf;
-    f>>tmp;
+    f>>yllcorner;
     f>>buf;
-    f>>tmp;
+    f>>cellsize;
     f>>buf;
     f>>nodata;
     mat = new int[taillex*tailley];
@@ -38,6 +37,7 @@ Matrice::Matrice(string fic)
             f>>mat[i*tailley + j];
         }
     }
+    f.close();
 }
 
 int * Matrice::getMat()
@@ -81,3 +81,22 @@ ostream& operator<<( ostream &flux,  const Matrice & matrice )
     return flux;
 }
 
+void Matrice::write()
+{
+    ofstream out(fic.c_str());
+    out<<"ncols "<<Tailley()<<endl;
+    out<<"nrows "<<Taillex()<<endl;
+    out<<"xllcorner "<<xllcorner<<endl;
+    out<<"yllcorner "<<yllcorner<<endl;
+    out<<"cellsize "<<cellsize<<endl;
+    out<<"NODATA_value "<<Nodata()<<endl;
+    for(int i=0;i<Taillex();i++)
+    {
+        for(int j=0;j<Tailley();j++)
+        {
+            out<<mat[i*tailley + j]<<" ";
+        }
+        out<<endl;
+    }
+    out.close();
+}
