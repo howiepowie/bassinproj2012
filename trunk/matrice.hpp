@@ -8,8 +8,8 @@ using namespace std;
 class Matrice
 {
     int * mat;
-    int taillex,tailley,nodata;
-
+    int taillex,tailley,nodata,cellsize,xllcorner,yllcorner;
+    string fic;
 public:
     Matrice(int x,int y);
     Matrice(string fic);
@@ -19,6 +19,7 @@ public:
     int Nodata() const;
     int Taillex() const;
     int Tailley() const;
+    void write();
 };
 
 ostream& operator<<( ostream &flux,  const Matrice & matrice );
