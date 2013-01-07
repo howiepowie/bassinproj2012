@@ -29,15 +29,19 @@ Matrice::Matrice(string fic):fic(fic)
     f>>cellsize;
     f>>buf;
     f>>nodata;
+    max = nodata;
     mat = new int[taillex*tailley];
     for(int i=0;i<taillex;i++)
     {
         for(int j=0;j<tailley;j++)
         {
             f>>mat[i*tailley + j];
+            if(max < mat[i*tailley + j])
+                max = mat[i*tailley + j];
         }
     }
     f.close();
+    max += 1.0;
 }
 
 int * Matrice::getMat()
