@@ -5,10 +5,10 @@
 
 Matrice::Matrice(int x,int y):taillex(x),tailley(y)
 {
-    mat = new int[taillex*tailley];
+    mat = new float[taillex*tailley];
 }
 
-int Matrice::get(int x, int y) const
+float Matrice::get(int x, int y) const
 {
     return mat[x*tailley + y];
 }
@@ -30,7 +30,7 @@ Matrice::Matrice(string fic):fic(fic)
     f>>buf;
     f>>nodata;
     max = nodata;
-    mat = new int[taillex*tailley];
+    mat = new float[taillex*tailley];
     for(int i=0;i<taillex;i++)
     {
         for(int j=0;j<tailley;j++)
@@ -44,14 +44,20 @@ Matrice::Matrice(string fic):fic(fic)
     max += 1.0;
 }
 
-int * Matrice::getMat()
+float * Matrice::getMat()
 {
     return mat;
 }
 
 Matrice::~Matrice()
 {
-    delete [] mat;
+    if(mat != NULL)
+        delete [] mat;
+}
+
+void Matrice::setmatnull()
+{
+    mat = NULL;
 }
 
 int Matrice::Nodata() const
@@ -103,4 +109,115 @@ void Matrice::write()
         out<<endl;
     }
     out.close();
+}
+
+float Matrice::Max() const
+{
+    return max;
+}
+
+Matrice::Matrice(float *tab,int x,int y):taillex(x),tailley(y)
+{
+    mat = new float[x*y];
+    for(int i=0;i<Taillex();i++)
+    {
+        for(int j=0;j<Tailley();j++)
+        {
+            mat[i*tailley+j] = tab[i*Tailley()+j];
+        }
+    }
+
+}
+
+int Matrice::getvoisin(int x, int y, float *tab)
+{
+    if(tab != NULL)
+    {
+        delete [] tab;
+    }
+    int res=0;
+    tab = new float[8];
+    if(x == 0)
+    {
+        if(y == 0)
+        {
+            tab[res]=get(x,y+1);res++;
+            tab[res]=get(x+1,y+1);res++;
+            tab[res]=get(x+1,y);res++;
+        }
+        else if(y == tailley-1)
+        {
+            tab[res]=get(x,y-1);res++;
+            tab[res]=get(x+1,y);res++;
+            tab[res]=get(x+1,y-1);res++;
+        }
+        else
+        {
+            tab[res]=get(x,y+1);res++;
+            tab[res]=get(x+1,y+1);res++;
+            tab[res]=get(x+1,y);res++;
+            tab[res]=get(x,y-1);res++;
+            tab[res]=get(x,y-1);res++;
+        }
+    }
+    else if(x == tailley-1)
+    {
+        if(y == 0)
+        {
+            tab[res]=get(x,y+1);res++;
+            tab[res]=get(x-1,y+1);res++;
+            tab[res]=get(x-1,y);res++;
+        }
+        else if(y == tailley-1)
+        {
+            tab[res]=get(x,y-1);res++;
+            tab[res]=get(x-1,y);res++;
+            tab[res]=get(x-1,y-1);res++;
+        }
+        else
+        {
+            tab[res]=get(x,y+1);res++;
+            tab[res]=get(x-1,y+1);res++;
+            tab[res]=get(x-1,y);res++;
+            tab[res]=get(x,y-1);res++;
+            tab[res]=get(x-1,y-1);res++;
+        }
+    }
+    else
+    {
+        if(y == 0)
+        {
+            tab[res]=get(x-1,y);res++;
+            tab[res]=get(x-1,y+1);res++;
+            tab[res]=get(x,y+1);res++;
+            tab[res]=get(x+1,y+1);res++;
+            tab[res]=get(x+1,y);res++;
+
+        }
+        else if(y == tailley-1)
+        {
+            tab[res]=get(x-1,y);res++;
+            tab[res]=get(x-1,y-1);res++;
+            tab[res]=get(x,y-1);res++;
+            tab[res]=get(x+1,y-1);res++;
+            tab[res]=get(x+1,y);res++;
+        }
+        else
+        {
+            tab[res]=get(x-1,y);res++;
+            tab[res]=get(x-1,y+1);res++;
+            tab[res]=get(x,y+1);res++;
+            tab[res]=get(x+1,y+1);res++;
+            tab[res]=get(x+1,y);res++;
+            tab[res]=get(x-1,y-1);res++;
+            tab[res]=get(x,y-1);res++;
+            tab[res]=get(x+1,y-1);res++;
+        }
+    }
+    return res;
+}
+
+void Matrice::set(int x, int y,float val)
+{
+    mat[x*tailley+y] = val;
 }
