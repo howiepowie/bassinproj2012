@@ -7,21 +7,25 @@ using namespace std;
 
 class Matrice
 {
-    int * mat;
+    float * mat;
     int taillex,tailley,nodata,cellsize,xllcorner,yllcorner;
     float max;
     string fic;
 public:
     Matrice(int x,int y);
     Matrice(string fic);
+    Matrice(float * tab,int x,int y);
     ~Matrice();
-    int get(int x,int y) const;
-    int *getMat();
+    float get(int x,int y) const;
+    float *getMat();
     int Nodata() const;
     int Taillex() const;
     int Tailley() const;
     float Max() const;
+    void set(int x, int y, float val);
     void write();
+    int getvoisin(int x,int y,float * tab);
+    void setmatnull();
 };
 
 ostream& operator<<( ostream &flux,  const Matrice & matrice );

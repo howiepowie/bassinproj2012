@@ -1,171 +1,471 @@
-#include <iostream>
 #include "matrice.hpp"
-#include "mpi.h"
-
+#include <iostream>
 using namespace std;
 
-void etape1(int * tab,int rang, int nprocs,int taillex,int tailley,float max)
+#define eps 0.01
+
+
+float * etape1(float * tab,int taillex,int tailley,float max)
 {
-    /*    int * bn,* bs, poss = (taillex-1)*tailley;
-    bn = new int[tailley];
-    bs = new int[tailley];
-    //échange des bords
-    if(rang==0)
-        MPI_Sendrecv(tab+poss,tailley,MPI_INT,1,MPI_ANY_TAG,bs,tailley,MPI_INT,1,MPI_ANY_TAG,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-    else if(rang == nprocs-1)
-        MPI_Sendrecv(tab,tailley,MPI_INT,rang-1,MPI_ANY_TAG,bn,tailley,MPI_INT,rang-1,MPI_ANY_TAG,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-    else
-    {
-        MPI_Sendrecv(tab,tailley,MPI_INT,rang-1,MPI_ANY_TAG,bs,tailley,MPI_INT,rang+1,MPI_ANY_TAG,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-        MPI_Sendrecv(tab+poss,tailley,MPI_INT,rang+1,MPI_ANY_TAG,bn,tailley,MPI_INT,rang-1,MPI_ANY_TAG,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-    }*/
-    float epsilon=0.01;
-    float * w;
-    bool condition = true;
+    float * w = new float[taillex*tailley];
+    //ajouter les communications pour les bords
+    const static int voisin[] = {-tailley-1,-tailley,-tailley+1,-1,1,tailley-1,tailley,tailley+1};
     for(int i=0;i<taillex;i++)
     {
         for(int j=0;j<tailley;j++)
         {
-            if(i == 0 || i == taillex-1)
-                w[j+tailley*i] = tab[j+tailley*i] + .0;
+            if(i==0 || i==taillex-1)
+                w[i*tailley+j]= tab[i*tailley+j];
             else
             {
-                if(j == 0 || j == tailley-1)
-                    w[j+tailley*i]= tab[j+tailley*i] + .0;
+                if(j==0 || j==tailley-1)
+                    w[i*tailley+j]= tab[i*tailley+j];
                 else
-                    w[j + tailley*i] = max;
+                    w[i*tailley+j]=max;
             }
         }
     }
+    bool condition=true;
     while(condition)
     {
         condition = false;
-        for(int i = 1;i<taillex-1;i++)
+        for(int i=1;i<taillex-1;i++)
         {
-            for(int j = 1;j<tailley-1;j++)
+            for(int j=1;j<tailley-1;j++)
             {
-                if(w[i*tailley+j]>tab[i*tailley+j])
+                int c = i*tailley+j;
+                if(w[c] > tab[c])
                 {
+                    //cout<<w[c]<<" "<<tab[c]<<endl;
+                    for(int k = 0;k<8;k++)
+                    {
+                        if(tab[c] >= w[c+voisin[k]]+eps)
+                        {
+                            w[c] = tab[c];
+                            condition=true;
+                        }
+                        else if(w[c] >  w[c+voisin[k]]+eps)
+                        {
+                            w[c] = w[c+voisin[k]]+eps;
+                            condition=true;
+                        }
+                    }
+                    cout<<"fin boucle voisin"<<endl;
+                }
+            }
+        }
+        //ajouter communication des bords
+        //cout<<"infinite loop"<<endl;
+    }
+    return w;
+}
 
+float * etape2(float * tab,int taillex,int tailley,float max)
+{
+    //echange des bords
+    float * res = new float[taillex*tailley];
+    //const static int voisin[] = {-tailley-1,-tailley,-tailley+1,-1,1,tailley-1,tailley,tailley+1};
+    for(int i =0; i<taillex;i++)
+    {
+        for(int j=0; j<tailley;j++)
+        {
+            int c = i*tailley + j;
+            float min = max;
+            if( i == 0 && j==0)
+            {
+                if(min > tab[c])
+                {
+                    res[c]=0;
+                    min=tab[c];
+                }
+                if(min > tab[c+1])
+                {
+                    res[c]=4;
+                    min=tab[c+1];
+                }
+                if(min > tab[c+tailley])
+                {
+                    res[c]=6;
+                    min=tab[c+tailley];
+                }
+                if(min > tab[c+tailley+1])
+                {
+                    res[c]=5;
+                    min=tab[c+tailley+1];
+                }
+            }
+            else if(i == 0 && j == tailley - 1 )
+            {
+                if(min > tab[c-1])
+                {
+                    res[c]=8;
+                    min=tab[c-1];
+                }
+                if(min > tab[c])
+                {
+                    res[c]=0;
+                    min=tab[c];
+                }
+                if(min > tab[c-tailley-1])
+                {
+                    res[c]=7;
+                    min=tab[c+tailley-1];
+                }
+                if(min > tab[c+tailley])
+                {
+                    res[c]=6;
+                    min=tab[c+tailley];
+                }
+            }
+            else if(i == 0)
+            {
+                if(min > tab[c-1])
+                {
+                    res[c]=8;
+                    min = tab[c-1];
+                }
+                if(min > tab[c])
+                {
+                    res[c]=0;
+                    min = tab[c];
+                }
+                if(min > tab[c+tailley-1])
+                {
+                    res[c]=7;
+                    min = tab[c+tailley-1];
+                }
+                if(min > tab[c+1])
+                {
+                    res[c]=4;
+                    min = tab[c+1];
+                }
+                if(min > tab[c+tailley])
+                {
+                    res[c]=6;
+                    min = tab[c+tailley];
+                }
+                if(min > tab[c+tailley+1])
+                {
+                    res[c]=5;
+                    min = tab[c+tailley+1];
+                }
+            }
+            else if(i == taillex-1 && j==0)
+            {
+                if(min > tab[c-tailley])
+                {
+                    res[c]=2;
+                    min = tab[c-tailley];
+                }
+                if(min > tab[c-tailley+1])
+                {
+                    res[c]=3;
+                    min = tab[c-tailley+1];
+                }
+                if(min > tab[c])
+                {
+                    res[c]=0;
+                    min = tab[c];
+                }
+                if(min > tab[c+1])
+                {
+                    res[c]=4;
+                    min =tab[c+1];
+                }
+            }
+            else if(i == taillex-1 && j==tailley-1)
+            {
+                if(min > tab[c-tailley-1])
+                {
+                    min = tab[c-tailley-1];
+                    res[c]=1;
+                }
+                if(min > tab[c-tailley])
+                {
+                    res[c]=2;
+                    min = tab[c-tailley];
+                }
+                if(min > tab[c-1])
+                {
+                    res[c]=8;
+                    min = tab[c-1];
+                }
+                if(min > tab[c])
+                {
+                    res[c]=0;
+                    min = tab[c];
+                }
+            }
+            else if(i == taillex-1)
+            {
+                if(min > tab[c-tailley-1])
+                {
+                    res[c]=1;
+                    min = tab[c-tailley-1];
+                }
+                if(min > tab[c-tailley])
+                {
+                    res[c]=2;
+                    min = tab[c-tailley];
+                }
+                if(min > tab[c-1])
+                {
+                    res[c]=8;
+                    min = tab[c-1];
+                }
+                if(min > tab[c-tailley+1])
+                {
+                    res[c]=3;
+                    min = tab[c-tailley+1];
+                }
+                if(min > tab[c])
+                {
+                    res[c]=0;
+                    min = tab[c];
+                }
+                if(min > tab[c+1])
+                {
+                    res[c]=4;
+                    min = tab[c+1];
+                }
+            }
+            else if(j == 0)
+            {
+                if(min > tab[c-tailley])
+                {
+                    res[c]=2;
+                    min = tab[c-tailley];
+                }
+                if(min > tab[c-tailley+1])
+                {
+                    res[c]=3;
+                    min = tab[c-tailley+1];
+                }
+                if(min > tab[c])
+                {
+                    res[c]=0;
+                    min = tab[c];
+                }
+                if(min > tab[c+1])
+                {
+                    res[c]=4;
+                    min = tab[c+1];
+                }
+                if(min > tab[c+tailley])
+                {
+                    res[c]=6;
+                    min = tab[c+tailley];
+                }
+                if(min > tab[c+tailley+1])
+                {
+                    res[c]=5;
+                    min = tab[c+tailley+1];
+                }
+            }
+            else if(j == tailley-1)
+            {
+                if(min > tab[c-tailley-1])
+                {
+                    res[c]=1;
+                    min = tab[c+tailley-1];
+                }
+                if(min > tab[c-tailley])
+                {
+                    res[c]=2;
+                    min = tab[c-tailley];
+                }
+                if(min > tab[c-1])
+                {
+                    res[c]=8;
+                    min = tab[c-1];
+                }
+                if(min > tab[c])
+                {
+                    res[c]=0;
+                    min = tab[c];
+                }
+                if(min > tab[c+tailley-1])
+                {
+                    res[c]=7;
+                    min = tab[c+tailley-1];
+                }
+                if(min > tab[c+tailley])
+                {
+                    res[c]=6;
+                    min = tab[c+tailley];
+                }
+            }
+            else
+            {
+                if(min > tab[c-tailley-1])
+                {
+                    res[c]=1;
+                    min = tab[c-tailley-1];
+                }
+                if(min > tab[c-tailley])
+                {
+                    res[c]=2;
+                    min = tab[c-tailley];
+                }
+                if(min > tab[c-1])
+                {
+                    res[c]=8;
+                    min = tab[c-1];
+                }
+                if(min > tab[c-tailley+1])
+                {
+                    res[c]=3;
+                    min = tab[c-tailley+1];
+                }
+                if(min > tab[c])
+                {
+                    res[c]=0;
+                    min = tab[c];
+                }
+                if(min > tab[c+tailley-1])
+                {
+                    res[c]=7;
+                    min = tab[c+tailley-1];
+                }
+                if(min > tab[c+1])
+                {
+                    res[c]=4;
+                    min = tab[c+1];
+                }
+                if(min > tab[c+tailley])
+                {
+                    res[c]=6;
+                    min = tab[c+tailley];
+                }
+                if(min > tab[c+tailley+1])
+                {
+                    res[c]=5;
+                    min = tab[c+tailley+1];
                 }
             }
         }
     }
+    return res;
 }
 
-void etape2(int * tab,int rang, int nprocs,int taillex,int tailley)
+float * etape3(float * tab,int taillex,int tailley)
 {
-    /*    int * bn,* bs,*dir, poss = (taillex-1)*tailley,dir;
-    bn = new int[tailley];
-    bs = new int[tailley];
-    dir = new int[taillex*tailley];
-    //échange des bords
-    if(rang==0)
-        MPI_Sendrecv(tab+poss,tailley,MPI_INT,1,MPI_ANY_TAG,bs,tailley,MPI_INT,1,MPI_ANY_TAG,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-    else if(rang == nprocs-1)
-        MPI_Sendrecv(tab,tailley,MPI_INT,rang-1,MPI_ANY_TAG,bn,tailley,MPI_INT,rang-1,MPI_ANY_TAG,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-    else
+    const static int voisin[] = {-tailley-1,-tailley,-tailley+1,-1,1,tailley-1,tailley,tailley+1};
+    const static float connection[] = {5,6,7,4,8,3,2,1};
+    bool condition = true;
+    float * res = new float[taillex*tailley];
+    for(int i = 0; i<taillex; i++)
+        for(int j =0;j<tailley; j++)
+            res[i*tailley+j]=-1;
+    while(condition)
     {
-        MPI_Sendrecv(tab,tailley,MPI_INT,rang-1,MPI_ANY_TAG,bs,tailley,MPI_INT,rang+1,MPI_ANY_TAG,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-        MPI_Sendrecv(tab+poss,tailley,MPI_INT,rang+1,MPI_ANY_TAG,bn,tailley,MPI_INT,rang-1,MPI_ANY_TAG,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-    }*/
-    for(int i = 0; i<taillex;i++)
-    {
-        for(int j = 0; j<tailley; j++)
+        condition = false;
+        for(int i = 0; i<taillex; i++)
         {
-            if(i == 0)
+            for(int j =0;j<tailley; j++)
             {
-                if(rang == 0)
+                int c = i*tailley+j;
+                int som = 1,k;
+                if(j == 0)
                 {
-                    if(j != (tailley-1))
+                    k = 1;
+                    while(k<8)
                     {
-                        if(i != taillex-1)
+                        if(tab[c+voisin[k]] == connection[k])
                         {
-                            min = 0;
+                            if(res[c+voisin[k]] == -1)
+                            {
+                                som = -1;
+                                break;
+                            }
+                            else
+                                som+=res[c+voisin[k]];
                         }
+                        k++;
+                        if(k==3 || k==5)
+                            k++;
+                    }
+                }
+                else if(j == tailley-1)
+                {
+                    k=0;
+                    while(k<7)
+                    {
+                        if(tab[c+voisin[k]] == connection[k])
+                        {
+                            if(res[c+voisin[k]] == -1)
+                            {
+                                som = -1;
+                                break;
+                            }
+                            else
+                                som+=res[c+voisin[k]];
+                        }
+                        k++;
+                        if(k==2 || k==4)
+                            k++;
                     }
                 }
                 else
                 {
-
+                    for(k=0;k<8;k++)
+                    {
+                        if(tab[c+voisin[k]] == connection[k])
+                        {
+                            if(res[c+voisin[k]] == -1)
+                            {
+                                som = -1;
+                                break;
+                            }
+                            else
+                                som+=res[c+voisin[k]];
+                        }
+                        k++;
+                        if(k==2 || k==4)
+                            k++;
+                    }
                 }
+                if(som == -1)
+                    condition = true;
+                res[c]=som;
             }
         }
     }
+    return res;
 }
 
-void etape3(int * tab,int rang, int nprocs,int taillex,int tailley)
+int main()
 {
-    /*    int * bn,* bs, poss = (taillex-1)*tailley;
-    bn = new int[tailley];
-    bs = new int[tailley];
-    //échange des bords
-    if(rang==0)
-        MPI_Sendrecv(tab+poss,tailley,MPI_INT,1,MPI_ANY_TAG,bs,tailley,MPI_INT,1,MPI_ANY_TAG,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-    else if(rang == nprocs-1)
-        MPI_Sendrecv(tab,tailley,MPI_INT,rang-1,MPI_ANY_TAG,bn,tailley,MPI_INT,rang-1,MPI_ANY_TAG,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-    else
+    Matrice m("ex.txt");
+    float * res = etape1(m.getMat(),m.Taillex(),m.Tailley(),m.Max());
+    cout<<"Après étape 1"<<endl;
+    for(int i=0;i<m.Taillex();i++)
     {
-        MPI_Sendrecv(tab,tailley,MPI_INT,rang-1,MPI_ANY_TAG,bs,tailley,MPI_INT,rang+1,MPI_ANY_TAG,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-        MPI_Sendrecv(tab+poss,tailley,MPI_INT,rang+1,MPI_ANY_TAG,bn,tailley,MPI_INT,rang-1,MPI_ANY_TAG,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-    }*/
+        for(int j=0;j<m.Tailley();j++)
+        {
+            cout<<res[i*m.Tailley()+j]<<" ";
+        }
+        cout<<endl;
+    }
+    float * res1 = etape2(res,m.Taillex(),m.Tailley(),m.Max());
+    cout<<"après étape 2:"<<endl;
+    for(int i=0;i<m.Taillex();i++)
+    {
+        for(int j=0;j<m.Tailley();j++)
+        {
+            cout<<res1[i*m.Tailley()+j]<<" ";
+        }
+        cout<<endl;
+    }
+    float * res2 = etape3(res1,m.Taillex(),m.Tailley());
+    cout<<"apres étape 2"<<endl;
+    for(int i=0;i<m.Taillex();i++)
+    {
+        for(int j=0;j<m.Tailley();j++)
+        {
+            cout<<res2[i*m.Tailley()+j]<<" ";
+        }
+        cout<<endl;
+    }
 
 }
-
-int main(int argc,char **argv)
-{
-    int rang,nprocs,*recv,taillex,tailley,*mnt;
-    float max;
-    Matrice * mat;
-    MPI_Init(&argc,&argv);
-    MPI_Comm_size(MPI_COMM_WORLD,&nprocs);
-    MPI_Comm_rank(MPI_COMM_WORLD,&rang);
-    if(rang == 0)
-    {
-        mat = new Matrice("ex.txt");
-        taillex = mat->Taillex();
-        tailley = mat->Tailley();
-        max = mat->Max();
-        mnt = mat->getMat();
-    }
-    MPI_Bcast(&taillex,1,MPI_INT,0,MPI_COMM_WORLD);
-    MPI_Bcast(&tailley,1,MPI_INT,0,MPI_COMM_WORLD);
-    MPI_Bcast(&max,1,MPI_FLOAT,0,MPI_COMM_WORLD);
-
-    int taillebande = (taillex/nprocs) * tailley;
-    int reste;
-
-    reste  = rang == (nprocs-1)?(taillex/nprocs) * tailley:0;
-
-    if(rang == (nprocs-1))
-        recv = new int[taillebande + reste];
-    else
-        recv = new int[taillebande];
-    MPI_Scatter(mnt,taillebande,MPI_INT,recv,taillebande,MPI_INT,0,MPI_COMM_WORLD);
-    if(reste != 0)
-    {
-        if(rang == 0)
-            MPI_Send(mnt + taillebande*nprocs,reste,MPI_INT,nprocs-1,MPI_ANY_TAG,MPI_COMM_WORLD);
-        else if(rang == nprocs-1)
-            MPI_Recv(recv+taillebande,taillebande,MPI_INT,0,MPI_ANY_TAG,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-    }
-    etape1(recv,rang,nprocs,taillebande+reste,tailley,max);
-    //    etape2(recv,rang,nprocs,taillebande+reste,tailley);
-    //    etape3(recv,rang,nprocs,taillebande+reste,tailley);
-
-    MPI_Gather(recv,taillebande,MPI_INT,mnt,taillebande,MPI_INT,0,MPI_COMM_WORLD);
-    if(reste != 0)
-    {
-        if(rang == 0)
-            MPI_Recv(mnt + taillebande*nprocs,reste,MPI_INT,nprocs-1,MPI_ANY_TAG,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-        else if(rang == nprocs-1)
-            MPI_Send(recv+taillebande,taillebande,MPI_INT,0,MPI_ANY_TAG,MPI_COMM_WORLD);
-    }
-    if(rang==0)
-    {
-        mat->write();
-    }
-    MPI_Finalize();
-    return 0;
-}
-
