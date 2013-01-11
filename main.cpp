@@ -1,9 +1,70 @@
 #include "matrice.hpp"
+#include <mpi.h>
 #include <iostream>
 using namespace std;
 
 #define eps 0.01
 
+//echange des bordures
+void echangerbords(float * send,int taillex, int tailley)
+{
+    int pid,nprocs;
+    MPI_Comm_rank(MPI_COMM_WORLD,&pid);
+    MPI_Comm_size(MPI_COMM_WORLD,&nprocs);
+
+    if(pid == 0)
+    {
+        MPI_Sendrecv(send+(taillex-2),tailley,MPI_FLOAT,1,
+                     123,send+taillex-1,tailley,MPI_FLOAT,1,123,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+    }
+    else if(pid == nprocs-1)
+    {
+        MPI_Sendrecv(send+tailley,tailley,MPI_FLOAT,pid-1,123,
+                     send,tailley,MPI_FLOAT,pid-1,123,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+    }
+    else
+    {
+        MPI_Sendrecv(send+tailley,tailley,MPI_FLOAT,pid-1,123,
+                     send,tailley,MPI_FLOAT,pid-1,123,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+        MPI_Sendrecv(send+taillex-2,tailley,MPI_FLOAT,pid+1,123,
+                     send+taillex-1,tailley,MPI_FLOAT,pid+1,123,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+    }
+
+}
+
+//distribution du tableau initiale et renvoie la taille bande distribué + le reste pour le dernier processeur
+int distribue(float * send,float * recv, int taillex, int tailley)
+{
+    int pid,nprocs,reste=taillex%nprocs;
+    MPI_Comm_rank(MPI_COMM_WORLD,&pid);
+    MPI_Comm_size(MPI_COMM_WORLD,&nprocs);
+    int taillebande = taillex/nprocs;
+
+    if(pid == 0)
+    {
+        MPI_Sendrecv(send,taillebande*tailley,MPI_FLOAT,0,123,
+                     recv,taillebande*tailley,MPI_FLOAT,0,123,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+        for(int i = 1;i<nprocs;i++)
+        {
+            if(i == nprocs-1)
+                MPI_Send(send+(i*tailley),(taillebande+reste)*tailley,MPI_FLOAT,i,123,MPI_COMM_WORLD);
+            else
+                MPI_Send(send+(i*tailley),taillebande*tailley,MPI_FLOAT,i,123,MPI_COMM_WORLD);
+        }
+    }
+    else
+    {
+        if(pid == nprocs-1)
+            MPI_Recv(recv+tailley,(taillebande+reste)*tailley,MPI_FLOAT,0,123,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+        else
+            MPI_Recv(recv+tailley,(taillebande+reste)*tailley,MPI_FLOAT,0,123,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
+    if(pid == nprocs-1)
+        return taillebande+reste;
+    else
+        return taillebande;
+}
 
 float * etape1(float * tab,int taillex,int tailley,float max)
 {

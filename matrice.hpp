@@ -26,6 +26,9 @@ public:
     void write();
     int getvoisin(int x,int y,float * tab);
     void setmatnull();
+    void writeetape1(float * res);
+    void writeetape2(float * res);
+    void writeetape3(float * res);
 };
 
 ostream& operator<<( ostream &flux,  const Matrice & matrice );
