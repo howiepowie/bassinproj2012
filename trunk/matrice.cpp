@@ -221,3 +221,63 @@ void Matrice::set(int x, int y,float val)
 {
     mat[x*tailley+y] = val;
 }
+
+void Matrice::writeetape1(float *res)
+{
+    ofstream out("etape1.txt");
+    out<<"ncols "<<Tailley()<<endl;
+    out<<"nrows "<<Taillex()<<endl;
+    out<<"xllcorner "<<xllcorner<<endl;
+    out<<"yllcorner "<<yllcorner<<endl;
+    out<<"cellsize "<<cellsize<<endl;
+    out<<"NODATA_value "<<Nodata()<<endl;
+    for(int i=0;i<Taillex();i++)
+    {
+        for(int j=0;j<Tailley();j++)
+        {
+            out<<res[i*tailley + j]<<" ";
+        }
+        out<<endl;
+    }
+    out.close();
+}
+
+void Matrice::writeetape2(float *res)
+{
+    ofstream out("etape2.txt");
+    out<<"ncols "<<Tailley()<<endl;
+    out<<"nrows "<<Taillex()<<endl;
+    out<<"xllcorner "<<xllcorner<<endl;
+    out<<"yllcorner "<<yllcorner<<endl;
+    out<<"cellsize "<<cellsize<<endl;
+    out<<"NODATA_value "<<Nodata()<<endl;
+    for(int i=0;i<Taillex();i++)
+    {
+        for(int j=0;j<Tailley();j++)
+        {
+            out<<res[i*tailley + j]<<" ";
+        }
+        out<<endl;
+    }
+    out.close();
+}
+
+void Matrice::writeetape3(float *res)
+{
+    ofstream out("etape3.txt");
+    out<<"ncols "<<Tailley()<<endl;
+    out<<"nrows "<<Taillex()<<endl;
+    out<<"xllcorner "<<xllcorner<<endl;
+    out<<"yllcorner "<<yllcorner<<endl;
+    out<<"cellsize "<<cellsize<<endl;
+    out<<"NODATA_value "<<Nodata()<<endl;
+    for(int i=0;i<Taillex();i++)
+    {
+        for(int j=0;j<Tailley();j++)
+        {
+            out<<res[i*tailley + j]<<" ";
+        }
+        out<<endl;
+    }
+    out.close();
+}
