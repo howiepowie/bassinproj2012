@@ -495,9 +495,9 @@ float * etape3(float * tab,int taillex,int tailley)
     return res;
 }
 
-int main()
+int main(int argc,char ** argv)
 {
-    Matrice m("ex.txt");
+/*    Matrice m("ex.txt");
     float * res = etape1(m.getMat(),m.Taillex(),m.Tailley(),m.Max());
     cout<<"Après étape 1"<<endl;
     for(int i=0;i<m.Taillex();i++)
@@ -527,6 +527,45 @@ int main()
             cout<<res2[i*m.Tailley()+j]<<" ";
         }
         cout<<endl;
-    }
+    }*/
+    int pid,nprocs,taillex,tailley,taillebande,reste;
+    float * mat, * tab, max;
+    MPI_Init(&argc,&argv);
+    MPI_Comm_rank(MPI_COMM_WORLD,&pid);
+    MPI_Comm_size(MPI_COMM_WORLD,&nprocs);
 
+    if(pid == 0)
+    {
+        Matrice m("ex.txt");
+        taillex = m.Taillex();
+        tailley = m.Tailley();
+        max = m.Max();
+        mat = m.getMat();
+    }
+    MPI_Bcast(&taillex,1,MPI_INT,0,MPI_COMM_WORLD);
+    MPI_Bcast(&tailley,1,MPI_INT,0,MPI_COMM_WORLD);
+    MPI_Bcast(&max,1,MPI_INT,0,MPI_COMM_WORLD);
+    taillebande = taillex/nprocs;
+    reste = taillex%nprocs;
+    if(pid == nprocs-1)
+        tab = new float[(taillebande+reste+1)*tailley];
+    else if(pid == 0)
+        tab = new float[(taillebande+1)*tailley];
+    else
+        tab = new float[(taillebande+2)*tailley];
+
+    int k = distribue(mat,tab,taillex,tailley);
+    cout<<"pid:"<<pid<<" ";
+    for(int i = 0;i<k;i++)
+    {
+        for(int j = 0;j<tailley;j++)
+        {
+            if(pid !=0)
+                cout<<tab[(i+1)*tailley+j]<<" ";
+            else
+                cout<<tab[i*tailley+j]<<" ";
+        }
+        cout<<endl;
+    }
+    MPI_Finalize();
 }
