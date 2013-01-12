@@ -1,6 +1,7 @@
 #include "matrice.hpp"
 #include <mpi.h>
 #include <iostream>
+
 using namespace std;
 
 #define eps 0.01
@@ -29,27 +30,27 @@ void echangerbords(float * send,int taillex, int tailley)
         MPI_Sendrecv(send+taillex-2,tailley,MPI_FLOAT,pid+1,123,
                      send+taillex-1,tailley,MPI_FLOAT,pid+1,123,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
     }
-
+    MPI_Barrier(MPI_COMM_WORLD);
 }
 
 //distribution du tableau initiale et renvoie la taille bande distribué + le reste pour le dernier processeur
 int distribue(float * send,float * recv, int taillex, int tailley)
 {
-    int pid,nprocs,reste=taillex%nprocs;
+    int pid,nprocs;
     MPI_Comm_rank(MPI_COMM_WORLD,&pid);
     MPI_Comm_size(MPI_COMM_WORLD,&nprocs);
-    int taillebande = taillex/nprocs;
+    int taillebande = taillex/nprocs, reste = taillex%nprocs;
 
-    if(pid == 0)
+    /*    if(pid == 0)
     {
         MPI_Sendrecv(send,taillebande*tailley,MPI_FLOAT,0,123,
                      recv,taillebande*tailley,MPI_FLOAT,0,123,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
         for(int i = 1;i<nprocs;i++)
         {
             if(i == nprocs-1)
-                MPI_Send(send+(i*tailley),(taillebande+reste)*tailley,MPI_FLOAT,i,123,MPI_COMM_WORLD);
+                MPI_Send(send+((i*taillebande)*tailley),(taillebande+reste)*tailley,MPI_FLOAT,i,123,MPI_COMM_WORLD);
             else
-                MPI_Send(send+(i*tailley),taillebande*tailley,MPI_FLOAT,i,123,MPI_COMM_WORLD);
+                MPI_Send(send+((i*taillebande)*tailley),taillebande*tailley,MPI_FLOAT,i,123,MPI_COMM_WORLD);
         }
     }
     else
@@ -57,7 +58,22 @@ int distribue(float * send,float * recv, int taillex, int tailley)
         if(pid == nprocs-1)
             MPI_Recv(recv+tailley,(taillebande+reste)*tailley,MPI_FLOAT,0,123,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
         else
-            MPI_Recv(recv+tailley,(taillebande+reste)*tailley,MPI_FLOAT,0,123,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+            MPI_Recv(recv+tailley,taillebande*tailley,MPI_FLOAT,0,123,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+    }*/
+    if(pid == 0)
+        MPI_Scatter(send,taillebande*tailley,MPI_FLOAT,
+                    recv,taillebande*tailley,MPI_FLOAT,0,MPI_COMM_WORLD);
+    else
+        MPI_Scatter(send,taillebande*tailley,MPI_FLOAT,
+                    recv+tailley,taillebande*tailley,MPI_FLOAT,0,MPI_COMM_WORLD);
+    if((pid == 0 || pid == nprocs-1) && reste != 0)
+    {
+        if(pid == 0)
+            MPI_Send(send+(taillex-reste)*tailley,reste*tailley,
+                     MPI_FLOAT,nprocs-1,123,MPI_COMM_WORLD);
+        else
+            MPI_Recv(recv+((taillebande+1)*tailley),reste*tailley,
+                     MPI_FLOAT,0,123,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
     }
     MPI_Barrier(MPI_COMM_WORLD);
     if(pid == nprocs-1)
@@ -497,7 +513,7 @@ float * etape3(float * tab,int taillex,int tailley)
 
 int main(int argc,char ** argv)
 {
-/*    Matrice m("ex.txt");
+    /*    Matrice m("ex.txt");
     float * res = etape1(m.getMat(),m.Taillex(),m.Tailley(),m.Max());
     cout<<"Après étape 1"<<endl;
     for(int i=0;i<m.Taillex();i++)
@@ -531,6 +547,7 @@ int main(int argc,char ** argv)
     int pid,nprocs,taillex,tailley,taillebande,reste;
     float * mat, * tab, max;
     MPI_Init(&argc,&argv);
+
     MPI_Comm_rank(MPI_COMM_WORLD,&pid);
     MPI_Comm_size(MPI_COMM_WORLD,&nprocs);
 
@@ -544,9 +561,11 @@ int main(int argc,char ** argv)
     }
     MPI_Bcast(&taillex,1,MPI_INT,0,MPI_COMM_WORLD);
     MPI_Bcast(&tailley,1,MPI_INT,0,MPI_COMM_WORLD);
-    MPI_Bcast(&max,1,MPI_INT,0,MPI_COMM_WORLD);
+    MPI_Bcast(&max,1,MPI_FLOAT,0,MPI_COMM_WORLD);
+
     taillebande = taillex/nprocs;
     reste = taillex%nprocs;
+
     if(pid == nprocs-1)
         tab = new float[(taillebande+reste+1)*tailley];
     else if(pid == 0)
@@ -555,17 +574,18 @@ int main(int argc,char ** argv)
         tab = new float[(taillebande+2)*tailley];
 
     int k = distribue(mat,tab,taillex,tailley);
-    cout<<"pid:"<<pid<<" ";
-    for(int i = 0;i<k;i++)
+    echangerbords(tab,k,tailley);
+    if(pid == 1)
     {
-        for(int j = 0;j<tailley;j++)
+        for(int i = 0;i<k+2;i++)
         {
-            if(pid !=0)
-                cout<<tab[(i+1)*tailley+j]<<" ";
-            else
+            for(int j = 0;j<tailley;j++)
+            {
                 cout<<tab[i*tailley+j]<<" ";
+            }
+            cout<<endl;
         }
-        cout<<endl;
     }
+    cout<<endl;
     MPI_Finalize();
 }
