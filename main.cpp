@@ -15,8 +15,8 @@ void echangerbords(float * send,int taillex, int tailley)
 
     if(pid == 0)
     {
-        MPI_Sendrecv(send+(taillex-2),tailley,MPI_FLOAT,1,
-                     123,send+taillex-1,tailley,MPI_FLOAT,1,123,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+        MPI_Sendrecv(send+(taillex-1)*tailley,tailley,MPI_FLOAT,1,
+                     123,send+taillex*tailley,tailley,MPI_FLOAT,1,123,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
     }
     else if(pid == nprocs-1)
     {
@@ -27,8 +27,8 @@ void echangerbords(float * send,int taillex, int tailley)
     {
         MPI_Sendrecv(send+tailley,tailley,MPI_FLOAT,pid-1,123,
                      send,tailley,MPI_FLOAT,pid-1,123,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-        MPI_Sendrecv(send+taillex-2,tailley,MPI_FLOAT,pid+1,123,
-                     send+taillex-1,tailley,MPI_FLOAT,pid+1,123,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+        MPI_Sendrecv(send+taillex*tailley,tailley,MPI_FLOAT,pid+1,123,
+                     send+(taillex+1)*tailley,tailley,MPI_FLOAT,pid+1,123,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
     }
     MPI_Barrier(MPI_COMM_WORLD);
 }
@@ -40,26 +40,6 @@ int distribue(float * send,float * recv, int taillex, int tailley)
     MPI_Comm_rank(MPI_COMM_WORLD,&pid);
     MPI_Comm_size(MPI_COMM_WORLD,&nprocs);
     int taillebande = taillex/nprocs, reste = taillex%nprocs;
-
-    /*    if(pid == 0)
-    {
-        MPI_Sendrecv(send,taillebande*tailley,MPI_FLOAT,0,123,
-                     recv,taillebande*tailley,MPI_FLOAT,0,123,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-        for(int i = 1;i<nprocs;i++)
-        {
-            if(i == nprocs-1)
-                MPI_Send(send+((i*taillebande)*tailley),(taillebande+reste)*tailley,MPI_FLOAT,i,123,MPI_COMM_WORLD);
-            else
-                MPI_Send(send+((i*taillebande)*tailley),taillebande*tailley,MPI_FLOAT,i,123,MPI_COMM_WORLD);
-        }
-    }
-    else
-    {
-        if(pid == nprocs-1)
-            MPI_Recv(recv+tailley,(taillebande+reste)*tailley,MPI_FLOAT,0,123,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-        else
-            MPI_Recv(recv+tailley,taillebande*tailley,MPI_FLOAT,0,123,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-    }*/
     if(pid == 0)
         MPI_Scatter(send,taillebande*tailley,MPI_FLOAT,
                     recv,taillebande*tailley,MPI_FLOAT,0,MPI_COMM_WORLD);
@@ -80,6 +60,32 @@ int distribue(float * send,float * recv, int taillex, int tailley)
         return taillebande+reste;
     else
         return taillebande;
+}
+
+//rassemble le tableau
+void rassemble(float * send,float * recv,int taillex,int tailley)
+{
+    int pid,nprocs;
+    MPI_Comm_rank(MPI_COMM_WORLD,&pid);
+    MPI_Comm_size(MPI_COMM_WORLD,&nprocs);
+    int taillebande = taillex/nprocs, reste = taillex%nprocs;
+    if(pid != 0)
+        MPI_Gather(send+tailley,taillebande*tailley,MPI_FLOAT,
+                   recv,taillebande*tailley,MPI_FLOAT,0,MPI_COMM_WORLD);
+    else
+        MPI_Gather(send,taillebande*tailley,MPI_FLOAT,
+                   recv,taillebande*tailley,MPI_FLOAT,0,MPI_COMM_WORLD);
+    if((pid == 0 || pid == nprocs-1) && reste != 0)
+    {
+        if(pid == 0)
+            MPI_Recv(recv+(taillex-reste)*tailley,reste*tailley,
+                     MPI_FLOAT,nprocs-1,123,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+        else
+            MPI_Send(send+((taillebande+1)*tailley),reste*tailley,
+                     MPI_FLOAT,0,123,MPI_COMM_WORLD);
+    }
+
+
 }
 
 float * etape1(float * tab,int taillex,int tailley,float max)
@@ -575,17 +581,17 @@ int main(int argc,char ** argv)
 
     int k = distribue(mat,tab,taillex,tailley);
     echangerbords(tab,k,tailley);
-    if(pid == 1)
+    rassemble(tab,mat,taillex,tailley);
+    if(pid == 0)
     {
-        for(int i = 0;i<k+2;i++)
+        for(int i = 0;i<taillex;i++)
         {
             for(int j = 0;j<tailley;j++)
             {
-                cout<<tab[i*tailley+j]<<" ";
+                cout<<mat[i*tailley+j]<<" ";
             }
             cout<<endl;
         }
     }
-    cout<<endl;
     MPI_Finalize();
 }
