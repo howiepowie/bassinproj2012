@@ -7,8 +7,8 @@ using namespace std;
 
 class Matrice
 {
-    float * mat;
-    int taillex,tailley,nodata,cellsize,xllcorner,yllcorner;
+    float * mat,xllcorner,yllcorner;
+    int taillex,tailley,nodata,cellsize,;
     float max;
     string fic;
 public:
