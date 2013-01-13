@@ -1,0 +1,230 @@
+\documentclass[12pt,a4paper,utf8x]{report}
+\usepackage [frenchb]{babel}
+
+% Pour pouvoir utiliser 
+\usepackage{ucs}
+\usepackage{graphicx}
+\usepackage[utf8x]{inputenc}
+
+\usepackage{url} % Pour avoir de belles url
+\usepackage {geometry}
+
+% Pour mettre du code source
+\usepackage {listings}
+\usepackage{verbatim}
+\usepackage{fancyvrb}
+% Pour pouvoir passer en paysage
+\usepackage{lscape}
+
+% Pour pouvoir faire plusieurs colonnes
+\usepackage {multicol}
+\usepackage{pifont}
+
+
+% Pour les entetes de page
+% \usepackage{fancyheadings}
+%\pagestyle{fancy}
+%\renewcommand{\sectionmark}[1]{\markboth{#1}{}} 
+%\renewcommand{\subsectionmark}[1]{\markright{#1}} 
+
+% Pour l'interligne de 1.5
+\usepackage {setspace}
+% Pour les marges de la page
+\geometry{a4paper, top=2.5cm, bottom=2.5cm, left=3cm, right=2.5cm, marginparwidth=1.2cm}
+
+\parskip=5pt %% distance entre § (paragraphe)
+\sloppy %% respecter toujours la marge de droite 
+
+% Pour les pénalités :
+\interfootnotelinepenalty=150 %note de bas de page
+\widowpenalty=150 %% veuves et orphelines
+\clubpenalty=150 
+
+%Pour la longueur de l'indentation des paragraphes
+\setlength{\parindent}{15mm}
+
+%%%% debut macro pour enlever le nom chapitre %%%%
+\makeatletter
+\def\@makechapterhead#1{%
+ % \vspace*{30\p@}%
+  {\parindent \z@ \raggedright \normalfont
+    \interlinepenalty\@M
+    \ifnum \c@secnumdepth >\m@ne
+        \Huge\bfseries \thechapter\quad
+    \fi
+    \Huge \bfseries #1\par\nobreak
+    \vskip 20\p@
+  }}
+
+\def\@makeschapterhead#1{%
+%  \vspace*{30\p@}%
+  {\parindent \z@ \raggedright
+    \normalfont
+    \interlinepenalty\@M
+    \Huge \bfseries  #1\par\nobreak
+    \vskip 20\p@
+  }}
+\makeatother
+%%%% fin macro %%%%
+
+\lstset{
+basicstyle=\footnotesize,
+numbers=left,
+numberstyle=\normalsize,
+breaklines=true,  
+numbersep=7pt,
+frame=single, 
+}
+
+\fvset{
+frame=single,
+fontsize==\footnotesize , 
+numbers=left,
+}
+
+%Couverture 
+
+\begin{document}
+
+\begin{titlepage}
+
+\begin{flushright}
+   \hfill
+   \begin{minipage}[t]{6cm} 
+	Département Informatique\\
+	UFR Sciences\\
+	2012-2013
+   \end{minipage}
+\end{flushright}
+
+\vspace{75mm}
+\begin{center}
+\normalsize{Rapport de projet}\\
+\huge{Parallélisation de l'algorithme de gestion d'écoulement des flux}
+\end{center}
+\begin{center}
+\large{par}
+\end{center}
+\begin{center}
+\large{Jean-Baptiste Perrin}\\
+\end{center}
+\vspace{15mm}
+\begin{center}
+\end{center}
+
+
+\end{titlepage}
+
+%\clearpage
+
+%x\tableofcontents
+\clearpage
+
+% Pour avoir un interligne de 1,5
+\begin{onehalfspace}
+
+\section{Choix technique}
+\subsection{Répartition de la matrice initiale}
+Pour la dispersion de la matrice initiale, j'ai choisie un système de bandes. Chaque processeurs possède une bande la matrice originale. La taille de la bande est calculée par rapport au nombre de processeur. \\
+$ taillebande = taillematrice / nombre\_de\_processeur $ \\
+Sauf pour le dernier processeur qui contient les lignes supplémentaire.
+
+\subsection{Communication}
+Afin de faciliter les communications, j'ai implémenté 3 fonctions, qui permet de diviser une matrice, de la rassembler, et de communiquer les bords entre les processeurs.
+
+\subsubsection{Répartir la matrice initiale}
+	Pour repartir la matrice, j'utilise un \emph{MPI\_Scatter} afin de séparer matrice en part égale entre les processeurs. Si la division de la taille de la matrice par le nombre processeurs, on attribue la reste des lignes au dernier processeurs.
+
+\subsubsection{Rassembler la matrice }
+	Pour rassembler la matrice, je fais le même traitement que la répartition mais dans le sens inverse. Le \emph{MPI\_Scatter} devient un \emph{MPI\_Gather} et le traitement du reste est inversé.
+
+\subsubsection{Envoyer les bords}
+	Pour l'envoie des bords , je distingue 3 cas possibles.
+	\begin{itemize}
+	 	\item je suis le premier processus, donc je doit juste envoyer ma dernière ligne et récupérer la première ligne du processus de rang suivant.
+	 	\item le dernier processus doit recevoir la dernière ligne du processus de rand inférieure et envoyer sa première ligne.
+	 	\item dans le dernier cas, je doit envoyer ma première ligne et recevoir la dernière ligne du processus de rang inférieur, et recevoir la première ligne et envoyer la dernière ligne au processus de rang inférieurs.
+	 \end{itemize} 	
+	
+	
+\section{Parallélisation de l'étape 1}
+
+Pour la parallélisation de l'étape 1, j'ai repris algorithme de base fournit dans le pdf. Sauf que j'ai remplacer dans les lignes condition = vrai par test = 1.
+Car pour certifier que tout le monde a terminer, je fais un Allreduce sur cette valeur test avec un opération MPI\_MAX afin de déterminer si une modification a eu lieu.
+
+\section{Parallélisation de l'étape 2}
+
+Pour la parallélisation de l'étape 2, Aucune modification n'est fait par rapport a l'algorithme séquentiel. Il faut rajouter une communication de bords au début de l'algorithme afin d'avoir toute les données nécessaires.
+
+\subsection{Pseudo code}
+
+\begin{lstlisting}
+echangerbord(tableau passer en parametre)
+Pour chaque cellule c de la bande faire
+		min = +infini
+		Pour chaque voisin v et lui-meme de c trie par ordre de priorite
+			if(min > tab[v])
+				res[c]=direction
+				min = tab[v]
+			Fin si
+		Fin pour chaque
+fin pour chaque		
+\end{lstlisting}
+\newpage
+
+\section{Parallélisation de l'étape 3}
+
+Pour la parallélisation de l'étape 3. j'ai repris le principe de l'étape 1 sauf que la condition d'arrêt est que la tableau résultat de contient plus de -1. 
+
+\subsection{Pseudo Code}
+\begin{lstlisting}
+Initialiser toute les cellules du tableau de resultat res a -1.
+echangerbord(tableau passer en parametre)
+Tant que continue = vrai
+	continue = faux
+	test = 0
+	echangebords(res)
+	Pour chaque cellule c de la bande faire
+		som = 1
+		Pour chaque voisin v de c faire
+			Si v se deverse dans c faire
+				si res[v] == -1
+					som = -1
+					break
+				sinon
+					som += res[v]
+				fin si
+			fin si
+		fin pour tout
+		Si som == -1
+			test = 1
+		fin si
+	MPI_Allreduce(test,MPI_SUM)
+	if(test == 1)
+		continue = vrai
+	fin si
+fin tant que
+	
+\end{lstlisting}
+
+\section{Utilisation de mon programme}
+
+\subsection{Compilation du programme}
+
+Pour compiler le code, il suffit d'avoir installer \emph{qmake} sur sa machine et ensuite exécuter qmake puis make.
+\begin{verbatim}
+$ qmake && make
+\end{verbatim}
+
+\subsection{Exécution de mon programme}
+ Pour exécuter mon programme, il suffit de d'effectuer la commande suivante :
+ \begin{verbatim}
+ $ mpirun -np le_nombre_processeurs bassinproj2012 mnt_a_charger
+ \end{verbatim}
+\end{onehalfspace}
+
+\section{Etat du programme}
+	Les algorithmes sont bons, mais ne fonctionne pas comme je le souhaiterai. Je ne sais pas d’où viennent mes erreurs. Une boucle infinie se produit dans certain cas dans l'étape 1 et dans l'étape 3. L'étape 1 renvoie la bonne solution, si celle-ci termine.L'étape 2 renvoie des solutions bizarre donc de se faite l'étape 3 ne peut renvoyer la bonne solution.
+
+
+\end{document}

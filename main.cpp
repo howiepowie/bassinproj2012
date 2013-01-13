@@ -91,7 +91,7 @@ void rassemble(float * send,float * recv,int taillex,int tailley)
 
 float * etape1(float * tab,int taillex,int tailley,float max)
 {
-    int pid,nprocs,test;
+    int pid,nprocs,test,recv;
     MPI_Comm_rank(MPI_COMM_WORLD,&pid);
     MPI_Comm_size(MPI_COMM_WORLD,&nprocs);
     float * w;
@@ -156,9 +156,11 @@ float * etape1(float * tab,int taillex,int tailley,float max)
             }
         }
         //verification que tout le monde a fini si, après le Allreduce, test=0 tout le monde a fini
-        MPI_Allreduce(&test,&test,1,MPI_INT,MPI_MAX,MPI_COMM_WORLD);
-        if(test != 0)
+        MPI_Allreduce(&test,&recv,1,MPI_INT,MPI_MAX,MPI_COMM_WORLD);
+        if(recv != 0)
+        {
             condition = true;
+        }
     }
 
     return w;
@@ -166,8 +168,6 @@ float * etape1(float * tab,int taillex,int tailley,float max)
 
 float * etape2(float * tab,int taillex,int tailley,float max)
 {
-    //echange des bords
-    float * res = new float[taillex*tailley];
     int pid,nprocs,mini;
     MPI_Comm_rank(MPI_COMM_WORLD,&pid);
     MPI_Comm_size(MPI_COMM_WORLD,&nprocs);
@@ -190,6 +190,8 @@ float * etape2(float * tab,int taillex,int tailley,float max)
         mini = 1;
         max =taillewbord-1;
     }
+    float * res = new float[taillewbord*tailley];
+    echangerbords(tab,taillex,tailley);
     //const static int voisin[] = {-tailley-1,-tailley,-tailley+1,-1,1,tailley-1,tailley,tailley+1};
     for(int i =mini; i<max;i++)
     {
@@ -476,7 +478,6 @@ float * etape2(float * tab,int taillex,int tailley,float max)
 
 float * etape3(float * tab,int taillex,int tailley)
 {
-    float * res = new float[taillex*tailley];
     int pid,nprocs,mini,max;
     MPI_Comm_rank(MPI_COMM_WORLD,&pid);
     MPI_Comm_size(MPI_COMM_WORLD,&nprocs);
@@ -499,17 +500,19 @@ float * etape3(float * tab,int taillex,int tailley)
         mini = 1;
         max =taillewbord-1;
     }
+    float * res = new float[taillewbord*tailley];
     const static int voisin[] = {-tailley-1,-tailley,-tailley+1,-1,1,tailley-1,tailley,tailley+1};
     const static float connection[] = {5,6,7,4,8,3,2,1};
     bool condition = true;
     int k = 0,test;
+    echangerbords(tab,taillex,tailley);
     res = new float[taillewbord*tailley];
     for(int i = 0; i<taillewbord; i++)
         for(int j =0;j<tailley; j++)
             res[i*tailley+j]=-1;
     while(condition)
     {
-        echangerbords(tab,taillex,tailley);
+        echangerbords(res,taillex,tailley);
         condition = false;
         test = 0;
         for(int i = mini; i<max; i++)
@@ -714,10 +717,15 @@ int main(int argc,char ** argv)
 
     MPI_Comm_rank(MPI_COMM_WORLD,&pid);
     MPI_Comm_size(MPI_COMM_WORLD,&nprocs);
-
+    if(argc < 2)
+    {
+        MPI_Finalize();
+        if(pid == 0) cout<<"ficher MNT non fournie en paramêtre"<<endl;
+        return 0;
+    }
     if(pid == 0)
     {
-        m = new Matrice("ex.txt");
+        m = new Matrice(argv[1]);
         taillex = m->Taillex();
         tailley = m->Tailley();
         max = m->Max();
@@ -744,6 +752,7 @@ int main(int argc,char ** argv)
     }
     float * res = etape1(tab,k,tailley,max);
     rassemble(res,mat,taillex,tailley);
+
     if(pid == 0)
     {
         cout<<"etape 1 terminé"<<endl;
