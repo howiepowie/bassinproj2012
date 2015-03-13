@@ -1,0 +1,1 @@
+Algo parallèle de calcul de bassin utilisant OpenMPI.
